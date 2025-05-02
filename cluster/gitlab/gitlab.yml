@@ -1,0 +1,22 @@
+apiVersion: apps.gitlab.com/v1beta1
+kind: GitLab
+metadata:
+  name: gitlab
+  labels:
+    app: 'gitlab'
+spec:
+  chart:
+    version: "8.10.5"
+    values:
+      global:
+        edition: ce
+        hosts:
+          domain: sandbox.internal
+        ingress:
+            "cert-manager.io/cluster-issuer": gitlab-selfsigned-issuer
+        initialDefaults:
+          signupEnabled: false
+      certmanager-issuer:
+        email: davidschneider@protonmail.ch
+      gitlab-runner:
+        install: false
