@@ -12,7 +12,7 @@ kubectl apply -f $(pwd)/cluster/deploy.yml
 # Wait until dust has settled
 kubectl wait -n ingress-nginx --for=condition=Ready -l 'app.kubernetes.io/component=controller' pods
 
-# Install cert-manager
+# Install cert-managergit
 kubectl apply -f $(pwd)/cluster/cert-manager.yml
 # Wait until dust has settled
 kubectl wait -n cert-manager --for=condition=Ready -l "app.kubernetes.io/instance=cert-manager" pods
