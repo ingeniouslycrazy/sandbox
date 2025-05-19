@@ -1,20 +1,23 @@
+ifeq ($(OS),Windows_NT)
+    SCRIPT_FT := "bat"
+else
+    SCRIPT_FT := "sh"
+endif
+
 all: help
 
 ## |Create and delete a cluster:
 
 create: 		## Setup cluster
-	@./bin/create-cluster.sh
+	@./scripts/create-cluster.$(SCRIPT_FT)
 purge:		## Delete cluster
-	@./bin/purge-cluster.sh
+	@./scripts/purge-cluster.$(SCRIPT_FT)
 
-## |Build:
+## |Deploy services:
 
 gitlab:		## Deploy Gitlab
-	@./bin/deploy-gitlab.sh
+	@./scripts/deploy-gitlab.$(SCRIPT_FT)
 
 ## |Usage!
 help:			## Show this help.
-	@echo "Usage: make OPTION\n"
-	@echo "Options:"
-	@sed -ne '/@sed/!s/## //p' $(MAKEFILE_LIST) | awk '{sub(":","");print}' | tr '|' '\n' | tr '!' ':'
-	@echo
+	@cat readme.txt

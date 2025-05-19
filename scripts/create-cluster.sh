@@ -1,13 +1,10 @@
 #!/bin/bash
 
-# Register helm charts
-kind delete cluster --name=sandbox
-
 # Create kind cluster
-kind create cluster --name=sandbox --config=./kind-config.yml --image kindest/node:v1.31.2
+kind create cluster --name=sandbox --config=./ai/kind-config.yml --image kindest/node:v1.31.2
 
 # Patch kind cluster to forward the hostPorts to an NGINX ingress controller and schedule it to the control-plane custom labelled node
-kubectl apply -f ./ingress.yml
+kubectl apply -f ./ai/ingress.yml
 
 # Wait until dust has settled
 sleep 10
@@ -21,4 +18,4 @@ helm upgrade --install cert-manager jetstack/cert-manager --namespace cert-manag
 kubectl wait -n cert-manager --for=condition=Ready -l "app.kubernetes.io/instance=cert-manager" pods
 
 # configure issuers
-kubectl apply -f ./issuers
+kubectl apply -f ./ai/issuers
