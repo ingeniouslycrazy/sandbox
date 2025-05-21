@@ -1,0 +1,18 @@
+{{- if or
+    .Values.config.kasCaCert
+    ((.Values.config.privateApi).tls).caCert
+}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "gitlab-agent.fullname" . }}
+  labels:
+    {{- include "gitlab-agent.labels" . | nindent 4 }}
+data:
+{{- if .Values.config.kasCaCert }}
+  ca.crt: {{ .Values.config.kasCaCert | quote }}
+{{- end }}
+{{- if .Values.config.privateApi.tls.caCert }}
+  private-api-ca.crt: {{ .Values.config.privateApi.tls.caCert | quote }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,296 @@
+{{- /*
+NOTE: The pod annotations need to be able to be overridden from values, and prometheus annotations need
+to be removed if observability is turned off in values, so this variable simplifies doing so.
+See below links for context:
+https://stackoverflow.com/questions/72956149/does-not-resolve-to-the-root-context-from-within-a-helm-template
+https://gitlab.com/gitlab-org/charts/gitlab-agent/-/merge_requests/80
+*/ -}}
+{{- $podAnnotations := (list $ .Values.podAnnotations) -}}
+{{- include "gitlab-agent.validateApiPort" . }}
+{{- include "gitlab-agent.validatePrivateApiPort" . }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  # NOTE: the `-v1` suffix was introduced as an epoch version to be able
+  # to gracefully recreate the deployment in case there is no upgrade
+  # path otherwise, e.g. when changing an immutable field.
+  # see https://gitlab.com/gitlab-org/charts/gitlab-agent/-/issues/38 for ctx
+  name: {{ include "gitlab-agent.fullname" . | trunc 60 }}-v2
+  labels:
+    {{- include "gitlab-agent.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicas }}
+  {{- if .Values.revisionHistoryLimit }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  {{- end }}
+  strategy:
+    rollingUpdate:
+      maxSurge: {{ .Values.maxSurge }}
+      maxUnavailable: {{ .Values.maxUnavailable }}
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      {{- include "gitlab-agent.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        {{- include "gitlab-agent.annotations" $podAnnotations | indent 8 }}
+      labels:
+        {{- include "gitlab-agent.agentPodLabels" . | nindent 8 }}
+    spec:
+      automountServiceAccountToken: false
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "gitlab-agent.serviceAccountName" . }}
+      {{- if .Values.priorityClassName }}
+      priorityClassName: {{ .Values.priorityClassName | quote }}
+      {{- end }}
+      {{- if .Values.runtimeClassName }}
+      runtimeClassName: {{ .Values.runtimeClassName | quote }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          terminationMessagePolicy: {{ .Values.terminationMessagePolicy }}
+          args:
+            - --token-file=/etc/agentk/secrets/token
+            {{- if not (.Values.config.receptive).enabled }}
+            - --kas-address={{ .Values.config.kasAddress }}
+              {{- if .Values.config.kasCaCert }}
+            - --kas-ca-cert-file=/etc/agentk/config/ca.crt
+              {{- end }}
+              {{- if .Values.config.kasHeaders }}
+                {{- range .Values.config.kasHeaders }}
+            - {{ printf "--kas-header=%s" . | quote }}
+                {{- end }}
+              {{- end }}
+            {{- end }}
+            {{- if ((.Values.config.observability).tls).enabled }}
+            - --observability-cert-file=/etc/agentk/observability-secrets/tls.crt
+            - --observability-key-file=/etc/agentk/observability-secrets/tls.key
+            {{- end }}
+            {{- range .Values.extraArgs }}
+            - {{ . }}
+            {{- end }}
+            {{- if (.Values.config.receptive).enabled }}
+              {{- if .Values.config.api.listenNetwork }}
+            - --api-listen-network={{ .Values.config.api.listenNetwork }}
+              {{- end }}
+              {{- if .Values.config.api.listenAddress }}
+            - --api-listen-address={{ .Values.config.api.listenAddress }}
+              {{- end }}
+              {{- if .Values.config.api.jwtPublicKey }}
+            - --api-jwt-file=/etc/agentk/secrets/api-jwt
+              {{- end }}
+              {{- if and (.Values.config.api.tls.enabled) (not ((.Values.ingress).tls).enabled)  }}
+                {{- if .Values.config.api.tls.cert }}
+            - --api-cert-file=/etc/agentk/secrets/tls.crt
+                {{- end }}
+                {{- if .Values.config.api.tls.key }}
+            - --api-key-file=/etc/agentk/secrets/tls.key
+                {{- end }}
+              {{- end }}
+            {{- end }}
+            {{- if (.Values.config.receptive).enabled }}
+            - --private-api-jwt-file=/etc/agentk/secrets/private-api-jwt
+              {{- if (.Values.config.privateApi).listenNetwork }}
+            - --private-api-listen-network={{ .Values.config.privateApi.listenNetwork }}
+              {{- end }}
+              {{- if (.Values.config.privateApi).listenAddress }}
+            - --private-api-listen-address={{ .Values.config.privateApi.listenAddress }}
+              {{- end }}
+              {{- if ((.Values.config.privateApi).tls).enabled }}
+                {{- if ((.Values.config.privateApi).tls).cert }}
+            - --private-api-cert-file=/etc/agentk/secrets/private-api-tls-cert
+                {{- end }}
+                {{- if ((.Values.config.privateApi).tls).key }}
+            - --private-api-key-file=/etc/agentk/secrets/private-api-tls-key
+                {{- end }}
+                {{- if ((.Values.config.privateApi).tls).caCert }}
+            - --private-api-ca-cert-file=/etc/agentk/config/private-api-ca.crt
+                {{- end }}
+              {{- end }}
+            {{- end }}
+          ports:
+            {{- if .Values.config.observability.enabled }}
+            - name: observability
+              containerPort: 8080
+              protocol: TCP
+            {{- end }}
+            {{- if (.Values.config.receptive).enabled }}
+            - containerPort: {{ .Values.service.privateApiPort }}
+              name: private-api
+            {{- end }}
+            {{- if and
+                (or (.Values.config.receptive).enabled .Values.config.observability.enabled)
+                (.Values.service).internalPort
+            }}
+            - containerPort: {{ (.Values.service).internalPort }}
+              name: api
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /liveness
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: POD_NAMESPACE
+              valueFrom:
+               fieldRef:
+                 fieldPath: metadata.namespace
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: GITLAB_AGENT_TELEMETRY_installation_method
+              value: helm-chart
+            - name: GITLAB_AGENT_TELEMETRY_helm_chart_version
+              value: {{ .Chart.Version }}
+            {{- if (.Values.config.receptive).enabled }}
+            - name: OWN_PRIVATE_API_URL
+              value: "{{ include "gitlab-agent.ownPrivateApi.scheme" . }}://$(POD_IP):{{ .Values.service.privateApiPort }}"
+            - name: POD_SELECTOR_LABELS
+              value: {{ include "gitlab-agent.selectorLabelsStr" . }}
+            {{- end }}
+            - name: SERVICE_ACCOUNT_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.serviceAccountName
+            - name: OCS_ENABLED
+              value: {{  include "gitlab-agent.ocs.enabled" . }}
+            {{- if (.Values.config.operational_container_scanning).enabled }}
+            - name: OCS_SERVICE_ACCOUNT_NAME
+              value: {{ include "gitlab-agent.ocs.serviceAccountName" . }}
+            {{- end }}
+            {{- if (.Values.resources.limits).cpu }}
+            - name: GOMAXPROCS
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.cpu
+            {{- end }}
+            {{- if (.Values.resources.limits).memory }}
+            - name: GOMEMLIMIT
+              valueFrom:
+                resourceFieldRef:
+                  resource: limits.memory
+            {{- end }}
+          {{- if .Values.extraEnv }}
+            {{- toYaml .Values.extraEnv | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: service-account-token-volume
+              mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+              readOnly: true
+            {{- if or
+                .Values.config.token
+                .Values.config.secretName
+                (.Values.config.api).jwtPublicKey
+                ((.Values.config.api).tls).cert
+                ((.Values.config.api).tls).key
+                ((.Values.config.privateApi).tls).cert
+                ((.Values.config.privateApi).tls).key
+                (.Values.config.receptive).enabled
+             }}
+            - name: secret-volume
+              mountPath: /etc/agentk/secrets
+              readOnly: true
+            {{- end }}
+            {{- if ((.Values.config.observability).tls).enabled }}
+            - name: observability-secret-volume
+              mountPath: /etc/agentk/observability-secrets
+              readOnly: true
+            {{- end }}
+            {{- if or .Values.config.kasCaCert ((.Values.config.privateApi).tls).caCert }}
+            - name: config-volume
+              mountPath: /etc/agentk/config
+              readOnly: true
+            {{- end }}
+            {{- if .Values.extraVolumeMounts }}
+            {{- toYaml .Values.extraVolumeMounts | nindent 12 }}
+            {{- end }}
+      {{- with .Values.initContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: service-account-token-volume
+          projected:
+            defaultMode: 0444
+            sources:
+            - configMap:
+                name: kube-root-ca.crt
+            - downwardAPI:
+                items:
+                - fieldRef:
+                    apiVersion: v1
+                    fieldPath: metadata.namespace
+                  path: namespace
+            - serviceAccountToken:
+                expirationSeconds: 3600
+                path: token
+        {{- if or
+            .Values.config.token
+            .Values.config.secretName
+            (.Values.config.api).jwtPublicKey
+            ((.Values.config.api).tls).cert
+            ((.Values.config.api).tls).key
+            ((.Values.config.privateApi).tls).cert
+            ((.Values.config.privateApi).tls).key
+            (.Values.config.receptive).enabled
+        }}
+        - name: secret-volume
+          secret:
+            defaultMode: 0444
+            secretName: {{ include "gitlab-agent.secretName" . }}
+        {{- end }}
+        {{- if ((.Values.config.observability).tls).enabled }}
+        - name: observability-secret-volume
+          secret:
+            defaultMode: 0444
+            secretName: {{ include "gitlab-agent.observabilitySecretName" . }}
+        {{- end }}
+        {{- if or .Values.config.kasCaCert ((.Values.config.privateApi).tls).caCert }}
+        - name: config-volume
+          configMap:
+            defaultMode: 0444
+            name: {{ include "gitlab-agent.fullname" . }}
+        {{- end }}
+        {{- if .Values.extraVolumes }}
+        {{- toYaml .Values.extraVolumes | nindent 8 }}
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.hostAliases  }}
+      hostAliases:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

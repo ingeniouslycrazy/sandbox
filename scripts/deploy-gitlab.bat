@@ -1,15 +1,13 @@
-# Install gitlab-operator
-kubectl create namespace gitlab-system
-helm upgrade --install gitlab-operator gitlab/gitlab-operator --namespace gitlab-system
+kubectl apply -f .\services\metrics.yml
+kubectl apply -f .\services\gitlab.yml -n gitlab-system
+kubectl wait gitlab gitlab --for=condition=available -n gitlab-system --timeout=900s
+kubectl get secret gitlab-gitlab-initial-root-password -n gitlab-system -ojsonpath="{.data.password}" > .\.temp_pw.b64
+certutil -decode .\.temp_pw.b64 .\.temp_pw.txt >nul
+echo.
+echo Gitlab root password:
+type .\.temp_pw.txt
+del .\.temp_pw.*
+echo[
 
-# Wait until dust has settled
-kubectl -n gitlab-system wait --for=condition=Ready -l 'control-plane=controller-manager' pods --timeout=300s
 
-# Install GitLab
-kubectl -n gitlab-system apply -f .\old\gitlab\gitlab.yml
 
-# Wait until dust has settled
-kubectl -n gitlab-system wait gitlab gitlab --for=condition=available --timeout 600s
-
-# Get the password to configure GitLab
-kubectl -n gitlab-system get secret gitlab-gitlab-initial-root-password -ojsonpath='{.data.password}' | base64 --decode ; echo

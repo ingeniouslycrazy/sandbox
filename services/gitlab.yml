@@ -1,0 +1,23 @@
+apiVersion: apps.gitlab.com/v1beta1
+kind: GitLab
+metadata:
+  name: gitlab
+  labels:
+    app: 'gitlab'
+spec:
+  chart:
+    version: "8.11.2"
+    values:
+      global:
+        edition: ce
+        hosts:
+          domain: ci.cluster01.ingeniouslycrazy.com
+        ingress:
+            "cert-manager.io/cluster-issuer": letsencrypt-staging
+        initialDefaults:
+          signupEnabled: false
+      certmanager-issuer:
+        email: davidschneider@protonmail.ch
+      gitlab-runner:
+        install: true
+      runnerToken: glrt-dDoxCnU6MdF0Gby5xGI4zLkKxwhzbi4Q.0w1d05skm
