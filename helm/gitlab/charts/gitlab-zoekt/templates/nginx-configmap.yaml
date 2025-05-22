@@ -22,6 +22,10 @@ data:
           server 127.0.0.1:{{ .Values.webserver.listen.port }};
         }
 
+        {{- if .Values.gateway.http2 }}
+        http2 on;
+        {{- end }}
+
         server {
             {{- if .Values.gateway.tls.certificate.enabled }}
             listen       {{ .Values.gateway.listen.port }} ssl;
@@ -36,22 +40,34 @@ data:
             auth_basic_user_file /etc/nginx/basicauth/.htpasswd;
             {{- end }}
             server_tokens off;
+            proxy_next_upstream off;
+            proxy_set_header Authorization $http_authorization;
 
+            # Internal gateway healthcheck
             location = /health {
               auth_basic off;
               return 200;
             }
 
+            # Webserver healthcheck
             location = / {
               auth_basic off;
               proxy_pass http://webserver/;
             }
 
+            # Webserver metrics
             location = /metrics {
               auth_basic off;
               proxy_pass http://webserver/metrics;
             }
 
+            # Webserver metrics (alias)
+            location = /webserver/metrics {
+              auth_basic off;
+              proxy_pass http://webserver/metrics;
+            }
+
+            # Indexer metrics
             location = /indexer/metrics {
               auth_basic off;
               proxy_pass http://indexer;
@@ -62,8 +78,23 @@ data:
               proxy_read_timeout 30m;
             }
 
+            location /webserver {
+                proxy_pass http://webserver;
+                proxy_read_timeout 1m;
+            }
+
+            # HTTP webserver endpoint
+            location /api {
+                proxy_pass http://webserver;
+                proxy_read_timeout 1m;
+            }
+
+            # gRPC catch all
             location / {
-              proxy_pass http://webserver;
+                grpc_pass grpc://webserver;
+                grpc_set_header Content-Type application/grpc;
+                grpc_read_timeout 1m;
+                grpc_send_timeout 1m;
             }
         }
     }

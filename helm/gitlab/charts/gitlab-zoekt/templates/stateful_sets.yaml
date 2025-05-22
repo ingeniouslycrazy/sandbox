@@ -119,6 +119,12 @@ spec:
           volumeMounts:
           - name: zoekt-index
             mountPath: /data/index
+          {{- if .Values.indexer.internalApi.enabled }}
+          - name: internal-api-secret
+            readOnly: true
+            mountPath: /.gitlab_shell_secret
+            subPath: .gitlab_shell_secret
+          {{- end }}
           env:
           - name: GITLAB_ZOEKT_MODE
             value: "webserver"

@@ -2,13 +2,44 @@
 
 For deploying Zoekt as a code search engine to support [GitLab exact code search](https://docs.gitlab.com/ee/user/search/exact_code_search.html).
 
-## Install the chart
+## Usage
 
+### Using Makefile
+
+```shell
+# See all available commands
+make help
+
+# Install the chart
+make install
+
+# Install with custom values
+make install ARGS="-f custom-values.yaml"
+
+# Upgrade the chart
+make upgrade
+
+# Uninstall the chart
+make uninstall
+
+# Watch for changes and run integration tests
+make watch-integration
+
+# Watch for changes and run all specs
+make watch-rspec
 ```
+
+### Using Helm directly
+
+```shell
+# Install the chart
 helm install gitlab-zoekt .
+
+# Install with custom values
+helm install gitlab-zoekt . -f custom-values.yaml
 ```
 
-## Enable Lefthook
+### Enable Lefthook
 
 ```shell
 lefthook install

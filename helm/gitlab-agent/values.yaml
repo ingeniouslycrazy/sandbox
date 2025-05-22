@@ -150,7 +150,7 @@ ingress:
   # -- annotations to add to the Ingress
   annotations: {}
   # -- hostname for the Ingress
-  hostname: agent.example.com # TODO: change to your domain
+  hostname: agent.ci.cluster01.ingeniouslycrazy.com
   # -- TLS configuration for the Ingress
   tls:
     # -- enable TLS for the Ingress

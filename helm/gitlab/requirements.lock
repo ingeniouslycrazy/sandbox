@@ -13,13 +13,13 @@ dependencies:
   version: '*.*.*'
 - name: cert-manager
   repository: https://charts.jetstack.io/
-  version: v1.12.16
+  version: v1.12.17
 - name: prometheus
   repository: https://prometheus-community.github.io/helm-charts
-  version: 15.18.0
+  version: 27.12.1
 - name: postgresql
   repository: https://charts.bitnami.com/bitnami
-  version: 12.12.10
+  version: 13.4.4
 - name: gitlab-runner
   repository: https://charts.gitlab.io/
   version: 0.74.1
@@ -34,12 +34,12 @@ dependencies:
   version: '*.*.*'
 - name: gitlab-zoekt
   repository: https://charts.gitlab.io/
-  version: 1.8.1
+  version: 2.3.0
 - name: traefik
   repository: https://helm.traefik.io/traefik
   version: 10.19.4
 - name: kubernetes-ingress
   repository: https://haproxytech.github.io/helm-charts
   version: 1.32.0
-digest: sha256:a7b44f28f13bd5541fcdcb0f6708d3c0aad712395fb082efc83141b8c2d5d45e
-generated: "2025-05-07T17:34:29.774089088Z"
+digest: sha256:00bde845ec9ef1f8e56ef75c730270928528edd672eff8696b5ed1f04cd9ee8e
+generated: "2025-05-15T13:59:02.396133922Z"

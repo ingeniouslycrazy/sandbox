@@ -1,0 +1,18 @@
+gitlabUrl: https://gitlab.my.domain.example.com/
+
+# The registration token for adding new runners to the GitLab server
+# Retrieve this value from your GitLab instance
+# For more info: https://docs.gitlab.com/ci/runners/
+#
+runnerRegistrationToken: "yrnZW46BrtBFqM7xDzE7dddd"
+
+# For RBAC support:
+rbac:
+  create: true
+
+# Run all containers with the privileged flag enabled
+# This flag allows the docker:dind image to run if you need to run Docker commands
+# Read the docs before turning this on:
+# https://docs.gitlab.com/runner/executors/kubernetes/#using-dockerdind
+runners:
+  privileged: true

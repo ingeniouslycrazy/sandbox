@@ -10,8 +10,8 @@ image:
   pullPolicy: IfNotPresent
 indexer:
   image:
-    repository: registry.gitlab.com/gitlab-org/build/cng/gitlab-zoekt-indexer
-    tag: v0.10.3-cb239
+    repository: registry.gitlab.com/gitlab-org/build/cng/gitlab-zoekt
+    tag: v0.16.0-33e0d
   listen:
     port: 6065
   resources: {}
@@ -25,8 +25,8 @@ indexer:
     serviceUrl: '' # URL to reach Zoekt service
 webserver:
   image:
-    repository: registry.gitlab.com/gitlab-org/build/cng/gitlab-zoekt-webserver
-    tag: v0.10.3-cb239
+    repository: registry.gitlab.com/gitlab-org/build/cng/gitlab-zoekt
+    tag: v0.16.0-33e0d
     # pullPolicy:
   listen:
     port: 6070
@@ -52,6 +52,7 @@ gateway:
     enabled: false
     secretName: '' # Defaults to {{ .Release.Name }}-basicauth and it must be created outside this chart
   dnsResolver: 'kube-dns.kube-system.svc.cluster.local'
+  http2: false # Whether to enable HTTP/2 support in nginx
   tls:
     certificate:
       enabled: false # Whether to use TLS for the gateway
