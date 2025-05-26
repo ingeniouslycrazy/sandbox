@@ -1,5 +1,6 @@
 #!/bin/bash
 
-echo "not done"
+mkdir -p ./.tmp
 
-exit -1
+kubectl get secrets --field-selector type=kubernetes.io/tls -n cert-manager -o yaml > ./.tmp/cert-manager.yml
+kubectl get secrets --field-selector type=kubernetes.io/tls -n gitlab-system -o yaml > ./.tmp/gitlab-system.yml
