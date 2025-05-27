@@ -2,6 +2,8 @@
 
 kind create cluster --name=sandbox --config=./cluster/kind-config.yml --image kindest/node:v1.31.2
 
+kind get kubeconfig --name sandbox > ./cli/.kube/config
+
 kubectl apply -f .\cluster\ingress.yml
 timeout 10
 kubectl wait --namespace ingress-nginx --for=condition=Ready pod --selector=app.kubernetes.io/component=controller --timeout=300s
