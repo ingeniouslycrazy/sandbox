@@ -1,0 +1,25 @@
+apiVersion: apps.gitlab.com/v1beta1
+kind: GitLab
+metadata:
+  name: gitlab
+  labels:
+    app: 'gitlab'
+spec:
+  chart:
+    version: "9.0.0"
+    values:
+      global:
+        gitlabVersion: "18.0.0"
+        edition: ce
+        hosts:
+          domain: ci.localtest.me
+        ingress:
+            "cert-manager.io/cluster-issuer": selfsigned-issuer
+        appConfig:
+          initialDefaults:
+            signupEnabled: false
+            gitlabProductUsageData: false
+      prometheus:
+        install: false
+      gitlab-runner:
+        install: false
